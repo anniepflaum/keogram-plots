@@ -86,7 +86,7 @@ def main():
             url = urljoin(idx, fname)
             print(f"  -> {fname}")
             try:
-                dst = fetch(url, os.path.join(args.outdir, f"{day:%Y-%m}"))
+                dst = fetch(url, os.path.join(args.outdir, f"{day.year:04d}", f"{day:%m}"))
                 downloaded.append(dst)
             except Exception as e:
                 print(f"  ! download failed: {e}")
