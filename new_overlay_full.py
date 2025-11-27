@@ -11,27 +11,67 @@ import gzip
 import tempfile
 import pandas as pd
 from pathlib import Path
+from datetime import datetime, timedelta
+import shutil
+import subprocess
+
 
 # Configuration: directories
 KEOGRAM_DIR = Path('/Users/anniepflaum/Documents/keogram_project/full_keograms')
-GOES_DIR    = Path('/Users/anniepflaum/Documents/keogram_project/GOES_18_data')
+GOES_DIR    = Path('/Users/anniepflaum/Documents/keogram_project/GOES_data')
 DSCOVR_DIR  = Path('/Users/anniepflaum/Documents/keogram_project/DSCOVR_data')
-OUTPUT_DIR  = Path('/Users/anniepflaum/Documents/keogram_project/overlaid_full_plots')
+OUTPUT_DIR  = Path('/Users/anniepflaum/Documents/keogram_project/overlaid_full')
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # AMISR base URL template for scraping hours
 AMISR_URL = 'https://optics.gi.alaska.edu/amisr_archive/Processed_data/aurorax/stream2/{year}/{month}/{day}/pfrr_amisr01/'
 
 
-def scrape_time_bounds(year: str, month: str, day: str):
-    url = AMISR_URL.format(year=year, month=month, day=day)
-    resp = requests.get(url)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, 'html.parser')
-    hours = [int(m.group(1)) for link in soup.find_all('a')
-             if (m := re.match(r'^ut(\d{2})/$', link.get('href', '')))]
-    return min(hours), max(hours) + 1
+BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+              "AppleWebKit/537.36 (KHTML, like Gecko) "
+              "Chrome/120.0.0.0 Safari/537.36")
 
+def scrape_time_bounds(year: str, month: str, day: str):
+    """
+    Scrape utHH/ folders and return (first_hour, last_hour+1).
+    Tries requests first; if SSL fails, falls back to curl.
+    """
+    url = AMISR_URL.format(year=year, month=month, day=day)
+
+    html = ""
+    # Try requests with a browser UA
+    try:
+        resp = requests.get(url, headers={"User-Agent": BROWSER_UA}, timeout=30)
+        resp.raise_for_status()
+        html = resp.text
+    except Exception:
+        html = ""
+
+    # If requests didn’t yield usable HTML, try curl
+    if (not html or "href" not in html.lower()) and shutil.which("curl"):
+        res = subprocess.run(
+            ["curl", "-sL", "-A", BROWSER_UA, url],
+            check=False, capture_output=True, text=True
+        )
+        if res.returncode == 0 and res.stdout:
+            html = res.stdout
+
+    if not html:
+        raise RuntimeError("Could not fetch AMISR directory listing (requests+curl failed).")
+
+    soup = BeautifulSoup(html, "html.parser")
+    hours = []
+    for link in soup.find_all("a"):
+        href = (link.get("href") or "").strip()
+        m = re.match(r"^ut(\d{1,2})/?$", href, flags=re.IGNORECASE)
+        if m:
+            hh = int(m.group(1))
+            if 0 <= hh <= 24:
+                hours.append(hh)
+
+    if not hours:
+        raise RuntimeError("No utHH/ folders found on the AMISR day page.")
+    return min(hours), max(hours) + 1
 
 def process_date(date_str: str):
     year, month, day = date_str[:4], date_str[4:6], date_str[6:]
@@ -41,10 +81,14 @@ def process_date(date_str: str):
         print(f"Skipping {date_str}: can't scrape AMISR ({e})")
         return
 
+    keo_dir   = Path(KEOGRAM_DIR) / year / month
+    goes_dir  = Path(GOES_DIR) / year / month
+    dsc_dir   = Path(DSCOVR_DIR) / year / month
+
     # Find files by date
-    keo_file = next(KEOGRAM_DIR.glob(f"*{date_str}*keo*.png"), None)
-    goes_file = next(GOES_DIR.glob(f"*d{date_str}_v*.nc"), None)
-    dscovr_file  = next(DSCOVR_DIR.glob(f"*dscovr_s{year}{month}{day}*pub.nc.gz"), None)
+    keo_file = next(keo_dir.glob(f"*{date_str}*keo*.png"), None)
+    goes_file = next(goes_dir.glob(f"*d{date_str}_v*.nc"), None)
+    dscovr_file  = next(dsc_dir.glob(f"*dscovr_s{year}{month}{day}*pub.nc.gz"), None)
 
     if not all([keo_file, goes_file, dscovr_file]):
         print(f"Missing data for {date_str}: ")
@@ -129,15 +173,36 @@ def process_date(date_str: str):
     plt.title(f'GOES-18 Hp and DSCOVR Bz over Keogram: {date_str}')
     plt.tight_layout()
 
-    out_file = OUTPUT_DIR / f"{date_str}_overlaid_plot.png"
+    out_dir = OUTPUT_DIR / year / month
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / f"{date_str}_overlaid_plot.png"
     plt.savefig(out_file, dpi=300)
     plt.close()
     print(f"Saved: {out_file}")
 
 
+def _parse_date_any(s: str) -> datetime:
+    s = s.strip()
+    if re.fullmatch(r"\d{8}", s):          # YYYYMMDD
+        return datetime.strptime(s, "%Y%m%d")
+    return datetime.strptime(s, "%Y-%m-%d") # YYYY-MM-DD
+
 if __name__ == '__main__':
-    # Process all dates based on keogram filenames
-    pattern = re.compile(r'(\d{8})')
-    dates = {pattern.search(p.name).group(1) for p in KEOGRAM_DIR.glob('*png') if pattern.search(p.name)}
-    for date in sorted(dates):
-        process_date(date)
+    start_in = input("Start date (YYYY-MM-DD or YYYYMMDD): ").strip()
+    end_in   = input("End date   (YYYY-MM-DD or YYYYMMDD): ").strip()
+
+    try:
+        d0 = _parse_date_any(start_in)
+        d1 = _parse_date_any(end_in)
+    except Exception as e:
+        print(f"[ERR] Bad date format: {e}")
+        raise SystemExit(1)
+
+    if d1 < d0:
+        print("[ERR] End date must be >= start date.")
+        raise SystemExit(1)
+
+    cur = d0
+    while cur <= d1:
+        process_date(cur.strftime("%Y%m%d"))
+        cur += timedelta(days=1)
