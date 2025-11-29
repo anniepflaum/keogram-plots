@@ -61,9 +61,9 @@ def main():
     args = ap.parse_args()
 
     if not args.start:
-        args.start = input("Start date (YYYY-MM-DD): ").strip()
+        args.start = input("Start date (YYYYMMDD): ").strip()
     if not args.end:
-        args.end = input("End date inclusive (YYYY-MM-DD): ").strip()
+        args.end = input("End date inclusive (YYYYMMDD): ").strip()
 
     start = dt.date.fromisoformat(args.start)
     end   = dt.date.fromisoformat(args.end)

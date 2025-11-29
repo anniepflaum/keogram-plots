@@ -205,7 +205,7 @@ def prompt_first_last(avail: List[int], date: dt.date) -> Tuple[int, int]:
     s = input(f"Start hour: ").strip() or ds
     e = input(f"End hour: ").strip() or de
     try:
-        hs, he = int(s), int(e)
+        hs, he = int(s), int(e) - 1
     except ValueError:
         print("Enter hours like 00, 01, …, 23.", file=sys.stderr); sys.exit(3)
     if he < hs:
@@ -217,11 +217,11 @@ def prompt_first_last(avail: List[int], date: dt.date) -> Tuple[int, int]:
 def main():
     args = parse_args()
     if not args.date:
-        args.date = input("Date (YYYY-MM-DD): ").strip()
+        args.date = input("Date (YYYYMMDD): ").strip()
     try:
         day = dt.date.fromisoformat(args.date)
     except Exception:
-        print("Invalid date. Use YYYY-MM-DD.", file=sys.stderr)
+        print("Invalid date. Use YYYYMMDD.", file=sys.stderr)
         sys.exit(1)
 
     day_url = station_day_url(day, args.station)
@@ -281,7 +281,7 @@ def main():
 
     # 5) Stitch
     site = args.station.split("_", 1)[0]
-    stitched = os.path.join(out_month, f"{ymd}_{hs:02d}-{he:02d}_{site}_{args.camera}_rgb-keogram_concat.png")
+    stitched = os.path.join(out_month, f"{ymd}_{hs:02d}-{(he + 1):02d}_{site}_{args.camera}_rgb-keogram_concat.png")
     try:
         concat_horizontal(got, stitched)
         print(f"\n[STITCHED] {stitched}")

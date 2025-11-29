@@ -63,12 +63,17 @@ def daterange(d0: dt.date, d1: dt.date):
 
 def main():
     ap = argparse.ArgumentParser(description="Download GOES-18 MAG L1b flat files by date range.")
-    ap.add_argument("start", help="YYYY-MM-DD (UTC)")
-    ap.add_argument("end", help="YYYY-MM-DD (UTC), inclusive")
+    ap.add_argument("start", nargs="?", help="YYYY-MM-DD (UTC)")
+    ap.add_argument("end", nargs="?", help="YYYY-MM-DD (UTC), inclusive")
     ap.add_argument("--out", default="/Users/anniepflaum/Documents/keogram_project/GOES_data",
                     help="Output root directory (default: GOES_data)")
     ap.add_argument("--dry-run", action="store_true", help="List what would download, then exit")
     args = ap.parse_args()
+
+    if not args.start:
+        args.start = input("Start date (YYYYMMDD): ").strip()
+    if not args.end:
+        args.end = input("End date inclusive (YYYYMMDD): ").strip()
 
     start = dt.date.fromisoformat(args.start)
     end   = dt.date.fromisoformat(args.end)
