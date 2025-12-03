@@ -191,12 +191,6 @@ def stack_keograms_for_month(ym: str,
         global_h0, global_h1 = 0, 24
         min_day = max_day = None
 
-    if min_day is None or max_day is None:
-        print(f"[debug] month {ym} global hour window: {global_h0:02d}-{global_h1:02d}")
-    else:
-        print(f"[debug] month {ym} global hour window: {global_h0:02d}-{global_h1:02d} "
-              f"(min from day {min_day:02d}, max from day {max_day:02d})")
-
     images = []
     for day, h0, h1 in day_windows:
         try:
@@ -239,6 +233,14 @@ def stack_keograms_for_month(ym: str,
             im = padded
         stacked.paste(im, (0, y_offset))
         y_offset += im.height
+
+    draw = ImageDraw.Draw(stacked)
+    span = max(global_h1 - global_h0, 1)
+    for hour in (6, 12):
+        if global_h0 <= hour <= global_h1:
+            rel = (hour - global_h0) / span
+            x = int(max_width * rel)
+            draw.line((x, 0, x, total_height), fill="white", width=10)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     stacked.save(out_path)
