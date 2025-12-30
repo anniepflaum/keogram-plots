@@ -5,7 +5,7 @@ keograms: https://optics.gi.alaska.edu/amisr_archive/Processed_data/aurorax/stre
 allsky videos: https://optics.gi.alaska.edu/realtime/data/MPEG/PKR_DASC_512/ <br />
 
 ```bash
-~/Documents/keogram_project/
+keogram_project/
 ├──interactive_stacks/               # contains necessary files to create keogram_YYYYMM.html within YYYYMM folders
 │  └──YYYYMM/
 │     ├──stacked_keograms_YYYYMM.png   # output from stack_keograms.py (year/stacked_keograms_YYYYMM.png)
