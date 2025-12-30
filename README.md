@@ -7,11 +7,11 @@ allsky videos: https://optics.gi.alaska.edu/realtime/data/MPEG/PKR_DASC_512/
 # Directory Layout (defaults)
 ~/Documents/keogram_project/<br/>
 &emsp;interactive_stacks/               # contains necessary files to create keogram_YYYYMM.html within YYYYMM folders<br/>
-  &emsp;YYYYMM/<br/>
-    &emsp;stacked_keograms_YYYYMM.png   # output from stack_keograms.py (year/stacked_keograms_YYYYMM.png)<br/>
-    &emsp;keogram_YYYYMM.html           # currently created by duplicating similar .html and adjusting for appropriate YYYYMM<br/>
-    &emsp;keogram_meta_YYYYMM.json      # output from build_keogram_meta.py<br/>
-    &emsp;video_meta_YYYYMM.json        # output from build_video_meta.py<br/>
+&emsp;&emsp;YYYYMM/<br/>
+&emsp;&emsp;&emsp;stacked_keograms_YYYYMM.png   # output from stack_keograms.py (year/stacked_keograms_YYYYMM.png)<br/>
+&emsp;&emsp;&emsp;keogram_YYYYMM.html           # currently created by duplicating similar .html and adjusting for appropriate YYYYMM<br/>
+&emsp;&emsp;&emsp;keogram_meta_YYYYMM.json      # output from build_keogram_meta.py<br/>
+&emsp;&emsp;&emsp;video_meta_YYYYMM.json        # output from build_video_meta.py<br/>
 &emsp;overlaid_full/                    # outputs from create_keogram_plots.py (full)<br/>
 &emsp;overlaid_partial/                 # outputs from create_keogram_plots.py (partial)<br/>
 &emsp;stacked_by_month/                 # outputs from stack_keograms.py (year/stacked_keograms_YYYYMM.png)<br/>
