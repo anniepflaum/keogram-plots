@@ -9,3 +9,6 @@ keograms: https://optics.gi.alaska.edu/amisr_archive/Processed_data/aurorax/stre
   overlaid_partial/       # outputs from create_keogram_plots.py (partial)
   stacked_by_month/       # outputs from stack_keograms.py (year/stacked_keograms_YYYYMM.png)
   scripts/                # the Python scripts (in Git)
+
+# Instructions for creating an interactive stack
+1. 

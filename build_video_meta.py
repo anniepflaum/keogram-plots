@@ -104,39 +104,48 @@ def parse_timestamp_from_text(text: str, fallback_date: date | None) -> datetime
 
 def extract_timestamp_from_frame(frame, fallback_date: date | None) -> datetime | None:
     """
-    Try full-frame OCR first; if that fails, try cropped bottom-left ROI.
+    OCR the bottom-left time bar (hh:mm:ss) using fallback_date from filename.
+    This is much more reliable than full-frame OCR.
     """
     h, w = frame.shape[:2]
 
-    # --- full-frame ---
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    pil_full = Image.fromarray(rgb)
-    text_full = pytesseract.image_to_string(pil_full)
-    dt = parse_timestamp_from_text(text_full, fallback_date)
-    if dt is not None:
-        return dt
-
-    # --- bottom-left ROI ---
-    left_frac = 0.02
-    right_frac = 0.55
-    top_frac = 0.82
-    bottom_frac = 0.98
+    # Tight ROI around the black time bar (based on your attached frame)
+    left_frac   = 0.00
+    right_frac  = 0.60
+    top_frac    = 0.93
+    bottom_frac = 1.00
 
     x0 = int(left_frac * w)
     x1 = int(right_frac * w)
     y0 = int(top_frac * h)
     y1 = int(bottom_frac * h)
 
-    crop = frame[y0:y1, x0:x1]
-    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(
-        gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
-    )
-    pil_crop = Image.fromarray(thresh)
-    text_crop = pytesseract.image_to_string(pil_crop)
-    dt = parse_timestamp_from_text(text_crop, fallback_date)
+    roi = frame[y0:y1, x0:x1]
 
-    return dt
+    # --- preprocess for OCR: grayscale -> upscale -> blur -> Otsu -> invert -> pad
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    gray = cv2.resize(gray, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
+    gray = cv2.GaussianBlur(gray, (3, 3), 0)
+
+    _, th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # Tesseract is happier with dark text on light background
+    if th.mean() < 127:
+        th = cv2.bitwise_not(th)
+
+    th = cv2.copyMakeBorder(th, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
+
+    config = "--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789:UTC "
+    text = pytesseract.image_to_string(Image.fromarray(th), config=config)
+
+    dt = parse_timestamp_from_text(text, fallback_date=fallback_date)
+    if dt is not None:
+        return dt
+
+    # Optional: fall back to full-frame OCR if you want (slower, usually worse)
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    text_full = pytesseract.image_to_string(Image.fromarray(rgb))
+    return parse_timestamp_from_text(text_full, fallback_date)
 
 
 def debug_ocr_for_head_frames(head_frames, fallback_date: date | None):
@@ -144,10 +153,11 @@ def debug_ocr_for_head_frames(head_frames, fallback_date: date | None):
     Print OCR text for the first few head frames, like your previous
     'OCR text (head[i] full): ...' debugging.
     """
-    left_frac = 0.02
-    right_frac = 0.55
-    top_frac = 0.82
-    bottom_frac = 0.98
+    left_frac = 0.00
+    right_frac = 0.60
+    top_frac = 0.93
+    bottom_frac = 1.00
+
 
     for i, frame in enumerate(head_frames[:DEBUG_HEAD_PRINT]):
         h, w = frame.shape[:2]
@@ -292,11 +302,10 @@ def prompt_year_month() -> tuple[int, int]:
 def main():
     year, month = prompt_year_month()
 
-    out_path = Path(
-        f"/Users/anniepflaum/Documents/keogram_project/interactive_stack/{year}{month:02d}/"
-        f"video_meta_{year}{month:02d}.json"
-    )
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    stack_dir = Path("/Users/anniepflaum/Documents/keogram_project/interactive_stack") / f"{year}{month:02d}"
+    stack_dir.mkdir(parents=True, exist_ok=True)  # ensure YYYYMM folder exists
+
+    out_path = stack_dir / f"video_meta_{year}{month:02d}.json"
 
     remote_files = list_remote_videos_for_month(year, month)
     if not remote_files:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import re
 import json
+from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
@@ -205,5 +206,8 @@ def prompt_year_month() -> tuple[int, int]:
 
 if __name__ == "__main__":
     YEAR, MONTH = prompt_year_month()
-    OUT = f"/Users/anniepflaum/Documents/keogram_project/interactive_stack/{YEAR}{MONTH:02d}/keogram_meta_{YEAR}{MONTH:02d}.json"
-    build_meta(YEAR, MONTH, OUT)
+    stack_dir = Path("/Users/anniepflaum/Documents/keogram_project/interactive_stack") / f"{YEAR}{MONTH:02d}"
+    stack_dir.mkdir(parents=True, exist_ok=True)  # ensure YYYYMM folder exists
+
+    out_path = stack_dir / f"keogram_meta_{YEAR}{MONTH:02d}.json"
+    build_meta(YEAR, MONTH, out_path)

@@ -160,6 +160,9 @@ def stack_keograms_for_month(ym: str,
     month = int(ym[4:6])
 
     out_path = output_dir / str(year) / f"stacked_keograms_{ym}.png"
+    interactive_dir = Path.home() / "Documents" / "keogram_project" / "interactive_stack" / f"{year}{month:02d}"
+    interactive_path = interactive_dir / out_path.name
+
     if skip_existing and out_path.exists():
         print(f"[skip] {out_path} (exists)")
         return
@@ -243,8 +246,11 @@ def stack_keograms_for_month(ym: str,
             draw.line((x, 0, x, total_height), fill="white", width=10)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    interactive_dir.mkdir(parents=True, exist_ok=True)
     stacked.save(out_path)
+    stacked.save(interactive_path)
     print(f"[saved] {out_path}")
+    print(f"[saved] {interactive_path}")
 
 
 if __name__ == "__main__":

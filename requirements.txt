@@ -1,10 +1,5 @@
-requests
 Pillow
-beautifulsoup4
-matplotlib
-numpy
-pandas
-netCDF4
 opencv-python-headless
 pytesseract
+requests
 urllib3
